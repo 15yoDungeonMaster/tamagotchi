@@ -16,6 +16,7 @@ const config = {
 
 const game = new Phaser.Game(config);
 
+let cloud;
 let background;
 let goat;
 let hunger = 100;
@@ -23,21 +24,31 @@ let happiness = 100;
 let energy = 100;
 let gameOver = false;
 
+
 function preload() {
     // Загрузка изображений
-    this.load.image('button', 'assets/images/btn.png'); // Placeholder for feed button
-    this.load.image('background', 'assets/images/background.png'); // Placeholder for feed background
+//    this.load.image('button', 'assets/images/btn.png'); // Placeholder for feed button
+    this.load.image('background', 'assets/images/background_glacial_mountains.png'); // Placeholder for feed background
     this.load.spritesheet('goat', 'assets/images/idle.png', {frameWidth: 256, frameHeight: 256});
+    this.load.image('cloud', 'assets/images/cloud.png');
+
     this.load.on('loaderror', (file) => {
         console.error('Ошибка загрузки файла:', file.src);
     });
 }
 
 function create() {
-    background = this.add.image(0, 0, 'background').setOrigin(0, 0).setDisplaySize(this.scale.width, this.scale.height);
-    // Создание козы
+
+
+    background = this.add.image(0, 0, 'background').setOrigin(0, 0);
+    background.displayWidth = this.scale.width;
+    background.displayHeight = this.scale.height;
+
+
     goat = this.add.sprite(this.scale.width / 2, this.scale.height / 2, 'idle').setScale(2);
-    // создание idle анимации
+    cloud = this.add.sprite(goat.x, goat.y + 215, 'cloud').setScale(1);
+
+// // создание idle анимации
     this.anims.create({
         key: 'idle',
         frames: this.anims.generateFrameNumbers('goat', {start: 0, end: 3}),
@@ -85,18 +96,36 @@ function create() {
     })
         .setInteractive({useHandCursor: true})
         .on('pointerdown', () => putToSleep());
+
+    this.decreaseTimer = this.time.addEvent({
+        delay: 2000, // Раз в 2 секунды
+        callback: decreaseRandomStat,
+        callbackScope: this,
+        loop: true // Повторять бесконечно
+    });
+
+    // Анимация покачивания облака
+    this.tweens.add({
+        targets: cloud,
+        y: cloud.y + 20, // Покачивание вверх-вниз
+        duration: 2000, // Продолжительность одного цикла
+        yoyo: true, // Возврат в исходное положение
+        repeat: -1 // Бесконечное повторение
+    });
+
+    // Связываем козу с облаком
+    this.tweens.add({
+        targets: goat,
+        y: goat.y + 20, // Коза движется вместе с облаком
+        duration: 2000, // Продолжительность одного цикла
+        yoyo: true, // Возврат в исходное положение
+        repeat: -1 // Бесконечное повторение
+    });
 }
+
 
 function update() {
     if (gameOver) return;
-
-
-//    // Уменьшение статистики со временем
-//    hunger = Math.max(hunger - 0.01, 0);
-//    happiness = Math.max(happiness - 0.01, 0);
-//    energy = Math.max(energy - 0.01, 0);
-
-    decreaseRandomStat()
 
     this.hungerText.setText(`Сытость: ${Math.round(hunger)}`);
     this.happinessText.setText(`Счастье: ${Math.round(happiness)}`);
@@ -118,11 +147,11 @@ function decreaseRandomStat() {
     const random = Math.random();
 
     if (random < 0.33 && hunger > 0) {
-        hunger -= 0.1; // Уменьшаем сытость
+        hunger -= 1; // Уменьшаем сытость
     } else if (random < 0.66 && happiness > 0) {
-        happiness -= 0.1; // Уменьшаем счастье
+        happiness -= 1; // Уменьшаем счастье
     } else if (energy > 0) {
-        energy -= 0.1; // Уменьшаем энергию
+        energy -= 1; // Уменьшаем энергию
     }
 }
 
