@@ -24,6 +24,13 @@ let happiness = 100;
 let energy = 100;
 let gameOver = false;
 
+// Порог для тряски
+const SHAKE_THRESHOLD = 15; // Чувствительность тряски
+let lastShakeTime = 0; // Время последней тряски
+let discoEffectActive = false; // Флаг для дискотечного эффекта
+let discoTween; // Твин для дискотечного эффекта
+let music; // Музыка
+
 
 function preload() {
     // Загрузка изображений
@@ -32,6 +39,7 @@ function preload() {
     this.load.spritesheet('goat', 'assets/images/idle.png', {frameWidth: 256, frameHeight: 256});
     this.load.image('cloud', 'assets/images/cloud.png');
 
+    this.load.audio('disco', 'assets/sounds/disco.mp3')
     this.load.on('loaderror', (file) => {
         console.error('Ошибка загрузки файла:', file.src);
     });
@@ -48,7 +56,7 @@ function create() {
     goat = this.add.sprite(this.scale.width / 2, this.scale.height / 2, 'idle').setScale(2);
     cloud = this.add.sprite(goat.x, goat.y + 215, 'cloud').setScale(1);
 
-// // создание idle анимации
+    // создание idle анимации
     this.anims.create({
         key: 'idle',
         frames: this.anims.generateFrameNumbers('goat', {start: 0, end: 3}),
@@ -121,6 +129,72 @@ function create() {
         yoyo: true, // Возврат в исходное положение
         repeat: -1 // Бесконечное повторение
     });
+
+    // Добавление обработчика тряски
+    if (window.DeviceMotionEvent) {
+        window.addEventListener('devicemotion', handleShake.bind(this));
+    } else {
+        console.warn('DeviceMotionEvent не поддерживается в этом браузере.');
+    }
+
+    music = this.sound.add('disco');
+}
+
+function handleShake(event) {
+    const currentTime = Date.now();
+    const acceleration = event.accelerationIncludingGravity;
+
+    // Вычисляем силу тряски
+    const force = Math.abs(acceleration.x) + Math.abs(acceleration.y) + Math.abs(acceleration.z);
+
+    // Если сила превышает порог и прошло достаточно времени с последней тряски
+    if (force > SHAKE_THRESHOLD && currentTime - lastShakeTime > 1000) {
+        lastShakeTime = currentTime;
+
+        // Реакция на тряску
+        happiness = Math.min(happiness + 10, 100); // Увеличиваем счастье
+
+        // Увеличиваем амплитуду движения козы и облака
+        this.tweens.add({
+            targets: [cloud, goat],
+            y: '-=50', // Увеличиваем амплитуду
+            angle: '+=' + (Math.random() < 0.5 ? 10 : -10), // Наклоняем облако и козу
+            duration: 500,
+            yoyo: true,
+            repeat: 3,
+            onComplete: () => {
+                cloud.angle = 0; // Возвращаем в исходное положение
+                goat.angle = 0;
+            }
+        });
+
+        // Включаем музыку
+        if (!music.isPlaying) {
+            music.play({loop: true});
+        }
+
+        // Дискотечный эффект
+        if (!discoEffectActive) {
+            discoEffectActive = true;
+            discoTween = this.tweens.addCounter({
+                from: 0,
+                to: 360,
+                duration: 100,
+                repeat: -1,
+                onUpdate: (tween) => {
+                    const value = Math.floor(tween.getValue());
+                    this.cameras.main.setBackgroundColor(Phaser.Display.Color.HSVToRGB(value / 360, 1, 1));
+                }
+            });
+
+            // Останавливаем дискотечный эффект через 53 секунды
+            this.time.delayedCall(53000, () => {
+                discoEffectActive = false;
+                discoTween.stop();
+                this.cameras.main.setBackgroundColor('#ffffff'); // Возвращаем фон
+            });
+        }
+    }
 }
 
 
